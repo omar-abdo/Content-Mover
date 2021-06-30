@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # This script should be run from inside the GitHub repo for curriculum.
-
-# Update the Repo.
-echo -e "\n Updating repo..."
-git pull
-
 # Get some information such as Download Directory and which week to create a folder for.
 echo -e "\n----- CONFIG -----"
+
+# Update the Repo.
+if [ $1 != "-n" ]; then
+	echo -e "\nUpdating repo..."
+	git pull
+fi
+
 read -p "IMPORTANT CONFIG: Please enter directory path to where Chrome downloads: " DOWNLOADDIR
 if [ ! -d $DOWNLOADDIR ]; then
 	echo "Well, that didn't work. Try again!"
@@ -23,47 +25,54 @@ fi
 # Find the week's content...
 echo -e "\n----- CONTENT -----"
 LP="1-Lesson-Plans/"
-echo "Checking $LP for $WEEK:"
+echo "CHECKING $LP FOR $WEEK:"
 CONTENT=$(ls $LP | grep $WEEK)
 if [ $? -ne 0 ]; then
-	echo -e "\t...Non-zero exit searching for the content...did you enter the right number?"
+	echo -e "...Non-zero exit searching for the content...did you enter the right number?"
 	exit 1
-else echo -e "\t...Found $LP$CONTENT!"
+else echo -e "...Found $LP$CONTENT!"
 fi
 
 # Move a copy of it here...
 cp -r "$LP$CONTENT" .
 if [ $? -ne 0 ]; then
-		echo -e "\tCouldn't copy the content. Exiting :("
+		echo -e "...Couldn't copy the content. Exiting :("
 		exit 1
-else echo -e "\t...Copied. Working folder is ./$CONTENT."
+else echo -e "...Copied. Working folder is ./$CONTENT."
 fi
 
 # Verify how many sessions are included...max is 4 in Week 12.
 # Remember to check inside the copied content, not the original.
-echo -e "\nEnumerating sessions..."
+echo -e "\nENUMERATING SESSIONS:"
 for DAY in {1..4}; do
 	if [ ! -d "$CONTENT/$DAY" ]; then
 		((DAY-=1))
-		echo -e "\n\tThere are $DAY sessions for this module ($CONTENT)."
+		echo -e "...There are $DAY sessions for this module ($CONTENT)."
 		break
 	else
-		echo -e "\t...Found a session $DAY."
+		echo -e "...Found a session $DAY."
 
-		# Let's get rid of the lesson plan...
-		echo -en "\t......Removing the LessonPlan: "
-		rm "$CONTENT/$DAY/LessonPlan.md"
-		if [ $? -ne 0 ]; then
-			echo "FAILED!"
-		else echo "DONE!"
+		# Sometimes there's no studentGuide and slides are in LessonPlan.
+		if [ -f "$CONTENT/$DAY/StudentGuide.md" ]; then
+			FILE_T="StudentGuide.md"
+			FILE="$CONTENT/$DAY/$FILE_T"
+		else
+			FILE_T="LessonPlan.md"
+			FILE="$CONTENT/$DAY/$FILE_T"
 		fi
 
 		# Let's get the Presentation ID...
-		echo -en "\t......Getting the presentationID: "
+		echo -en "......Getting the presentationID from $FILE_T: "
+		ID=$(grep -i "docs.google.com/presentation/" "$FILE" | awk -F "presentation/d/" '{print $2}' | sed 's/\/edit.*//' | sed 's/)//' | sed 's/\.//' )
+		echo -e "$ID"
 
-		# Trim off the /edit and any parentheses...
-		ID=$(grep -i "docs.google.com/presentation/" "$CONTENT/$DAY/StudentGuide.md" | awk -F "presentation/d/" '{print $2}' | sed 's/\/edit)//' | sed 's/)//' )
-		echo -e "$ID\n"
+		# Let's get rid of the lesson plan...
+		echo -en "......Removing the LessonPlan: "
+		rm "$CONTENT/$DAY/LessonPlan.md"
+		if [ $? -ne 0 ]; then
+			echo -e "FAILED!"
+		else echo -e "DONE!"
+		fi
 
 		URL="https://docs.google.com/presentation/d/$ID/export/pdf"
 
@@ -78,12 +87,13 @@ for DAY in {1..4}; do
 	fi
 done
 
-echo ""
-read -p "        Enter when all $DAY slides are downloaded..."
+echo -en "\n\t"
+read -p "[ PRESS ENTER AFTER $DAY SLIDES HAVE BEEN DOWNLOADED ]"
 
 # Grab and move slide files from the Downloads folder. They should be the $DAY most recent files, no?
+echo -e "\nMOVING THE SLIDES:"
 for NUM in $(seq 1 $DAY); do
-	echo -en "\tTrying to move the slides from day $NUM..."
+	echo -en "...Trying to move the slides from day $NUM..."
 	FILE=$(find "$DOWNLOADDIR" -maxdepth 1 -name "*.pdf" -print0 | xargs -r -0 ls -1 -t | head -"$NUM" | tail -n 1)
 	mv "$FILE" $CONTENT/$NUM
 	if [ $? -ne 0 ]; then
@@ -95,7 +105,8 @@ done
 
 # last, the homework.
 echo -e "\n----- HOMEWORK -----"
-echo -en "\tTrying to copy homework from ./2-Homework/$CONTENT to $CONTENT/Homework..."
+echo -e "MOVING HOMEWORK:"
+echo -en "...Trying to copy homework from ./2-Homework/$CONTENT to $CONTENT/Homework..."
 cp -r "2-Homework/$CONTENT" "$CONTENT/Homework"
 if [ $? -ne 0 ]; then
 	echo "FAILED! Try moving manually."
@@ -103,7 +114,8 @@ else
 	echo "DONE!"
 fi
 
-echo -en "\tDeleting the Solutions folder from $CONTENT/Homework..."
+echo -e "\nDELETING SOLUTIONS:"
+echo -en "...Deleting the Solutions folder from $CONTENT/Homework..."
 rm -r "$CONTENT/Homework/Solutions"
 if [ $? -ne 0 ]; then
 	echo "FAILED! Try deleting manually."
@@ -111,4 +123,4 @@ else
 	echo "DONE!"
 fi
 
-echo "Finished! Now move the ./$CONTENT folder into the GitLab repo and PUSH!"
+echo -e "\nFinished! Now move the ./$CONTENT folder into the GitLab repo and PUSH!"
