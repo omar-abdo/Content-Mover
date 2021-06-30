@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# HERE IS A HELPER SCRIPT FOR CREATING CONTENT FOR EACH WEEK.
+# Pick the week to move...
+echo -e "\n Updating repo..."
+git pull
+
+echo -e "\n----- CONFIG -----"
+read -p "IMPORTANT CONFIG: Please enter directory path to where Chrome downloads: " DOWNLOADDIR
+if [ ! -d $DOWNLOADDIR ]; then
+	echo "Well, that didn't work. Try again!"
+	exit 1
+fi
+
+read -p "Which week's content do you want to move? " WEEK
+if [ $WEEK -le 10 ]; then
+	WEEK="0$WEEK"
+fi
+
+# Find the week's content...
+echo -e "\n----- CONTENT -----"
+LP="1-Lesson-Plans/"
+echo "Checking $LP for $WEEK:"
+CONTENT=$(ls $LP | grep $WEEK)
+if [ $? -ne 0 ]; then
+	echo -e "\t...Non-zero exit searching for the content...did you enter the right number?"
+	exit 1
+else echo -e "\t...Found $LP$CONTENT!"
+fi
+
+# Move a copy of it here...
+cp -r "$LP$CONTENT" .
+if [ $? -ne 0 ]; then
+		echo -e "\tCouldn't copy the content. Exiting :("
+		exit 1
+else echo -e "\t...Copied. Working folder is ./$CONTENT."
+fi
+
+# Verify how many sessions are included...max is 4 in Week 12.
+# Remember to check inside the copied content, not the original.
+echo -e "\nEnumerating sessions..."
+for DAY in {1..4}; do
+	if [ ! -d "$CONTENT/$DAY" ]; then
+		((DAY-=1))
+		echo -e "\n\tThere are $DAY sessions for this module ($CONTENT)."
+		break
+	else
+		echo -e "\t...Found a session $DAY."
+
+		# Let's get rid of the lesson plan...
+		echo -en "\t......Removing the LessonPlan: "
+		rm "$CONTENT/$DAY/LessonPlan.md"
+		if [ $? -ne 0 ]; then
+			echo "FAILED!"
+		else echo "DONE!"
+		fi
+
+		# Let's get the Presentation ID...
+		echo -en "\t......Getting the presentationID: "
+
+		# Trim off the /edit and any parentheses...
+		ID=$(grep -i "docs.google.com/presentation/" "$CONTENT/$DAY/StudentGuide.md" | awk -F "presentation/d/" '{print $2}' | sed 's/\/edit)//' | sed 's/)//' )
+		echo -e "$ID\n"
+
+		URL="https://docs.google.com/presentation/d/$ID/export/pdf"
+
+		# Let's try to download the presentation...
+		if [ $OSTYPE == "darwin" ]; then
+			open -a "Google Chrome" $URL
+		else
+			#echo "Skipping!"
+			start chrome $URL
+		fi
+	fi
+done
+
+echo ""
+read -p "        Enter when all $DAY slides are downloaded..."
+
+# Grab and move slide files from the Downloads folder. They should be the most recent files, no?
+for NUM in $(seq 1 $DAY); do
+	echo -en "\tTrying to move the slides from day $NUM..."
+	FILE=$(find /d -maxdepth 1 -name "*.pdf" -print0 | xargs -r -0 ls -1 -t | head -"$NUM" | tail -n 1)
+	mv "$FILE" $CONTENT/$NUM
+	if [ $? -ne 0 ]; then
+		echo "FAILED! Try moving manually."
+	else
+		echo "DONE!"
+	fi
+done
+
+# last, the homework.
+echo -e "\n----- HOMEWORK -----"
+echo -en "\tTrying to copy homework from ./2-Homework/$CONTENT to $CONTENT/Homework..."
+cp -r "2-Homework/$CONTENT" "$CONTENT/Homework"
+if [ $? -ne 0 ]; then
+	echo "FAILED! Try moving manually."
+else
+	echo "DONE!"
+fi
+
+echo -en "\tDeleting the Solutions folder from $CONTENT/Homework..."
+rm -r "$CONTENT/Homework/Solutions"
+if [ $? -ne 0 ]; then
+	echo "FAILED! Try deleting manually."
+else
+	echo "DONE!"
+fi
+
+echo "Finished! Now move the ./$CONTENT folder into the GitLab repo and PUSH!"
