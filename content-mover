@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# HERE IS A HELPER SCRIPT FOR CREATING CONTENT FOR EACH WEEK.
-# Pick the week to move...
+# This script should be run from inside the GitHub repo for curriculum.
+
+# Update the Repo.
 echo -e "\n Updating repo..."
 git pull
 
+# Get some information such as Download Directory and which week to create a folder for.
 echo -e "\n----- CONFIG -----"
 read -p "IMPORTANT CONFIG: Please enter directory path to where Chrome downloads: " DOWNLOADDIR
 if [ ! -d $DOWNLOADDIR ]; then
@@ -14,6 +16,7 @@ fi
 
 read -p "Which week's content do you want to move? " WEEK
 if [ $WEEK -lt 10 ]; then
+	# Single digit numbers are 0-padded to 2 digits ex. 04
 	WEEK="0$WEEK"
 fi
 
@@ -68,6 +71,7 @@ for DAY in {1..4}; do
 		if [ $OSTYPE == "darwin" ]; then
 			open -a "Google Chrome" $URL
 		else
+			#You can uncomment "skipping" and comment out "start chrome" to skip the download if you want.
 			#echo "Skipping!"
 			start chrome $URL
 		fi
@@ -77,7 +81,7 @@ done
 echo ""
 read -p "        Enter when all $DAY slides are downloaded..."
 
-# Grab and move slide files from the Downloads folder. They should be the most recent files, no?
+# Grab and move slide files from the Downloads folder. They should be the $DAY most recent files, no?
 for NUM in $(seq 1 $DAY); do
 	echo -en "\tTrying to move the slides from day $NUM..."
 	FILE=$(find /d -maxdepth 1 -name "*.pdf" -print0 | xargs -r -0 ls -1 -t | head -"$NUM" | tail -n 1)
