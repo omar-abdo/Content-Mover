@@ -84,7 +84,7 @@ read -p "        Enter when all $DAY slides are downloaded..."
 # Grab and move slide files from the Downloads folder. They should be the $DAY most recent files, no?
 for NUM in $(seq 1 $DAY); do
 	echo -en "\tTrying to move the slides from day $NUM..."
-	FILE=$(find /d -maxdepth 1 -name "*.pdf" -print0 | xargs -r -0 ls -1 -t | head -"$NUM" | tail -n 1)
+	FILE=$(find "$DOWNLOADDIR" -maxdepth 1 -name "*.pdf" -print0 | xargs -r -0 ls -1 -t | head -"$NUM" | tail -n 1)
 	mv "$FILE" $CONTENT/$NUM
 	if [ $? -ne 0 ]; then
 		echo "FAILED! Try moving manually."
