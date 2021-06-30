@@ -13,7 +13,7 @@ if [ ! -d $DOWNLOADDIR ]; then
 fi
 
 read -p "Which week's content do you want to move? " WEEK
-if [ $WEEK -le 10 ]; then
+if [ $WEEK -lt 10 ]; then
 	WEEK="0$WEEK"
 fi
 
