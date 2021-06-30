@@ -15,17 +15,17 @@ if [ ! -d $DOWNLOADDIR ]; then
 	exit 1
 fi
 
-read -p "Which week's content do you want to move? " WEEK
-if [ $WEEK -lt 10 ]; then
+read -p "Which week's content do you want to move? " WEEK_N
+if [ $WEEK_N -lt 10 ]; then
 	# Single digit numbers are 0-padded to 2 digits ex. 04
-	WEEK="0$WEEK"
+	WEEK="0$WEEK_N"
 fi
 
 # Find the week's content...
 echo -e "\n----- CONTENT -----"
 LP="1-Lesson-Plans/"
 echo "CHECKING $LP FOR $WEEK:"
-CONTENT=$(ls $LP | grep $WEEK)
+CONTENT=$(ls $LP | grep "$WEEK-")
 if [ $? -ne 0 ]; then
 	echo -e "...Non-zero exit searching for the content...did you enter the right number?"
 	exit 1
@@ -89,11 +89,13 @@ done
 echo -en "\n\t"
 read -p "[ PRESS ENTER AFTER $DAY SLIDES HAVE BEEN DOWNLOADED ]"
 
-# Grab and move slide files from the Downloads folder. They should be the $DAY most recent files, no?
+# Grab and move slide files from the Downloads folder. They should always start with WEEK.DAY - ex. 19.2
+
 echo -e "\nMOVING THE SLIDES:"
 for NUM in $(seq 1 $DAY); do
-	echo -en "...Trying to move the slides from day $NUM..."
-	FILE=$(find "$DOWNLOADDIR" -maxdepth 1 -name "*.pdf" -print0 | xargs -r -0 ls -1 -t | head -"$NUM" | tail -n 1)
+	echo -en "...Trying to move the slides from day $NUM "
+	FILE=$(find "$DOWNLOADDIR" -maxdepth 1 -name "$WEEK_N.$NUM*.pdf")
+	echo -n "[$FILE] ... "
 	mv "$FILE" $CONTENT/$NUM
 	if [ $? -ne 0 ]; then
 		echo "FAILED! Try moving manually."
@@ -115,11 +117,14 @@ fi
 
 echo -e "\nDELETING SOLUTIONS:"
 echo -en "...Deleting the Solutions folder from $CONTENT/Homework..."
-rm -r "$CONTENT/Homework/Solutions"
-if [ $? -ne 0 ]; then
-	echo "FAILED! Try deleting manually."
+if [ -d "$CONTENT/Homework/Solutions" ]; then
+	rm -r "$CONTENT/Homework/Solutions"
+	if [ $? -ne 0 ]; then
+		echo "FAILED! Try deleting manually."
+	else
+		echo "DONE!"
+	fi
 else
-	echo "DONE!"
+	echo "No solution to delete."
 fi
-
 echo -e "\nFinished! Now move the ./$CONTENT folder into the GitLab repo and PUSH!"
