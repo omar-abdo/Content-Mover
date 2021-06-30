@@ -4,11 +4,10 @@
 # Get some information such as Download Directory and which week to create a folder for.
 echo -e "\n----- CONFIG -----"
 
-# Update the Repo.
-if [ $1 != "-n" ]; then
-	echo -e "\nUpdating repo..."
-	git pull
-fi
+# Update the Repo. You can comment out the pull if you're testing.
+echo -e "\nUpdating repo..."
+git pull
+
 
 read -p "IMPORTANT CONFIG: Please enter directory path to where Chrome downloads: " DOWNLOADDIR
 if [ ! -d $DOWNLOADDIR ]; then
